@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      input[type="number"]{width: 60px;}
+    </style>
+  </head>
+  <body>
+    <select id="expenseDescription" onchange="updateExpenseValue()">
+      <? var expenses = JSON.parse(PropertiesService.getDocumentProperties().getProperty('expenses')); ?>
+      <? for (var expenseItem in expenses) { ?>
+        <option value="<?= expenseItem ?>"><?= expenseItem ?></option>
+      <? } ?>
+    </select>
+    <br>
+    <br>
+    <label for="expenseValue">Expense Value:</label>
+    <input type="number" id="expenseValue">
+    <br>
+    <br>
+    <button onclick="saveExpenses()">Save</button>
+    <button onclick="google.script.host.close()">Close</button>
+    <script>
+      document.getElementById("expenseDescription").selectedIndex = 0;
+      updateExpenseValue();
+
+      function updateExpenseValue() {
+        google.script.run.withSuccessHandler(function(expenseValue) {
+          document.getElementById("expenseValue").value = expenseValue;
+        }).getExpenseValue(document.getElementById("expenseDescription").value);
+      }
+
+      function saveExpenses() {
+        var expenseItem = document.getElementById("expenseDescription").value;
+        var expenseValue = parseFloat(document.getElementById("expenseValue").value);
+        google.script.run.updateExpense(expenseItem, expenseValue);
+        google.script.run.withSuccessHandler(function(){google.script.host.close();}).refreshAmountColumn();
+      }
+    </script>
+  </body>
+</html>

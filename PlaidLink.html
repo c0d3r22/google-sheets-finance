@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <!-- Include the Plaid Link initialize script on each page of your site. -->
+    <!-- It should always be loaded directly from https://cdn.plaid.com, rather -->
+    <!-- than included in a bundle or hosted yourself. -->
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+
+    <label>Enter Link Token</label><br />
+    <input type="text" id="linkToken"><br />
+    <button type="button" onclick="launchPlaid()">Launch Plaid Link</button>
+
+    <script>
+      function launchPlaid() {
+          const handler = Plaid.create({
+              token: document.getElementById('linkToken').value,
+                  // The onSuccess() function of the Plaid plugin will return a public
+                  // token and metadata object to your code. Please use our API to send
+                  // us the public token, and we will query the routing number and account
+                  // number of the bank account from Plaid and store it securely on our systems.
+              onSuccess: (public_token, metadata) => { 
+                document.getElementById('plaidToken').innerHTML = public_token;
+                document.getElementById('plaidMetadata2').value = JSON.stringify(metadata, null, 2); 
+              },
+              onLoad: () => { },
+                          onExit: (err, metadata) => { 
+                document.getElementById('plaidToken').innerHTML = err;
+                document.getElementById('plaidMetadata2').value = JSON.stringify(metadata, null, 2); 
+              },
+              onEvent: (eventName, metadata) => { },
+              receivedRedirectUri: null,
+          });
+              // Calling open() will display the "Institution Select" view to your user, 
+              // starting the Link flow. 
+          handler.open();
+      }
+    </script>
+    <h1>Plaid</h1>
+
+    <label>Plaid Public Token</label><br>
+    <p id='plaidToken'></p><BR>
+    <label>MetaData</label><br>
+  <textarea id='plaidMetadata2' rows='10' cols='50'></textarea>
+</body>
+</html>

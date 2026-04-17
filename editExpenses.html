@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      input[type="number"]{width: 60px;}
+    </style>
+  </head>
+  <body>
+    <table>
+      <? for (var i = 0; i < expenseItems.length; i++) { ?>
+        <? var expenseItem = expenseItems[i]; ?>
+        <? var expenseValue = expenses[expenseItem]; ?>
+        <tr>
+          <td><?= expenseItem ?></td>
+          <td>$<input type="number" value="<?= expenseValue ?>" id="<?= expenseItem ?>"></td>
+          <td><button onclick="deleteExpense('<?= expenseItem ?>')">🗑️</button></td>
+        </tr>
+      <? } ?>
+    </table>
+    <br>
+    <button onclick="saveExpenses()">Save</button>
+    <button onclick="google.script.host.close()">Close</button>
+    <button onclick="addNewExpense()">Add New Expense</button>
+    <script>
+      function saveExpenses() {
+        var values = {};
+        var newExpenseDescInputs = document.querySelectorAll('input[id^="newExpenseDesc"]');
+        var newExpenseValueInputs = document.querySelectorAll('input[id^="newExpenseValue"]');
+        for (var i = 0; i < newExpenseDescInputs.length; i++) {
+          var newExpenseDesc = newExpenseDescInputs[i].value.trim();
+          var newExpenseValue = newExpenseValueInputs[i].value.trim();
+          if (newExpenseDesc && newExpenseValue) {
+            values[newExpenseDesc] = parseFloat(newExpenseValue);
+          }
+        }
+        <? for (var i = 0; i < expenseItems.length; i++) { ?>
+          <? var expenseItem = expenseItems[i]; ?>
+          values["<?= expenseItem ?>"] = parseFloat(document.getElementById("<?= expenseItem ?>").value);
+        <? } ?>
+        google.script.run.withSuccessHandler(function(){google.script.host.close();}).updateExpenses(values);
+      }
+
+      function addNewExpense() {
+        var table = document.querySelector("table");
+        var newRow = document.createElement("tr");
+        var expenseDescInput = document.createElement("input");
+        expenseDescInput.type = "text";
+        expenseDescInput.placeholder = "Expense Description";
+        expenseDescInput.id = "newExpenseDesc";
+        var expenseValueInput = document.createElement("input");
+        expenseValueInput.type = "number";
+        expenseValueInput.placeholder = "Value";
+        expenseValueInput.id = "newExpenseValue";
+        var td1 = document.createElement("td");
+        td1.appendChild(expenseDescInput);
+        var td2 = document.createElement("td");
+        td2.appendChild(document.createTextNode("$"));
+        td2.appendChild(expenseValueInput);
+        var td3 = document.createElement("td");
+        var deleteButton = document.createElement("button");
+        deleteButton.innerHTML = "🗑️";
+        deleteButton.onclick = function() {deleteNewExpenseRow(newRow)};
+        td3.appendChild(deleteButton);
+        newRow.appendChild(td1);
+        newRow.appendChild(td2);
+        newRow.appendChild(td3);
+        table.appendChild(newRow);
+      }
+
+      function deleteNewExpenseRow(row) {
+        row.remove();
+      }
+
+      function deleteExpense(expenseItem) {
+        if (confirm("Are you sure you want to delete the expense item \"" + expenseItem + "\"?")) {
+          google.script.run.withSuccessHandler(function(){google.script.host.close();}).deleteExpense(expenseItem);
+        }
+      }
+    </script>
+  </body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      input[type="number"]{width: 60px;}
+    </style>
+  </head>
+  <body>
+    <table>
+      <? for (var i = 0; i < expenseItems.length; i++) { ?>
+        <? var expenseItem = expenseItems[i]; ?>
+        <? var expenseValue = expenses[expenseItem]; ?>
+        <tr>
+          <td><?= expenseItem ?></td>
+          <td>$<input type="number" value="<?= expenseValue ?>" id="<?= expenseItem ?>"></td>
+        </tr>
+      <? } ?>
+    </table>
+    <br>
+    <button onclick="saveExpenses()">Save</button>
+    <button onclick="google.script.host.close()">Close</button>
+    <script>
+      function saveExpenses() {
+        var values = {};
+        <? for (var i = 0; i < expenseItems.length; i++) { ?>
+          <? var expenseItem = expenseItems[i]; ?>
+          values["<?= expenseItem ?>"] = parseFloat(document.getElementById("<?= expenseItem ?>").value);
+        <? } ?>
+        google.script.run.withSuccessHandler(function(){google.script.host.close();}).updateExpenses(values);
+      }
+    </script>
+  </body>
+</html> -->
