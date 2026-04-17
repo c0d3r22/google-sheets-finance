@@ -1,3 +1,26 @@
+// ============================================================
+// Finance Tracker - Utility Functions Module
+// Helper functions and test utilities
+// ============================================================
+
+/*
+   The following functions are to be used with the html that creates only one dropdown and one input box.
+   This may not be wanted as a user may want to edit multiple values at the same time and save them all
+   at one time. This also makes the code more complicated which may not be warranted. These would use the
+   editExpensesDropdown.html so the editExpenses() function would need to be updated to use that html.
+*/
+function getExpenseValue(expenseDescription) {
+  var expenses = JSON.parse(PropertiesService.getDocumentProperties().getProperty('expenses'));
+  return expenses[expenseDescription];
+}
+
+function updateExpense(expenseItem, expenseValue) {
+  var expenses = JSON.parse(PropertiesService.getDocumentProperties().getProperty('expenses'));
+  expenses[expenseItem] = expenseValue;
+  PropertiesService.getDocumentProperties().setProperty('expenses', JSON.stringify(expenses));
+  refreshAmountColumn();
+}
+
 function createNextMonthSheetWithData(numBanks, numExpenses) {
   // Get the current sheet
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -97,70 +120,4 @@ function createSheetWithData(sheetName, numBanks, numExpenses, expenseData) {
 
   // Set dropdown data validation for status column and set width of columns
   updateColumnWidths(sheet, true);
-
-  var totalRow = sheet.getLastRow() + 2;
-  sheet.getRange("C" + totalRow).setValue("Total").setFontWeight("bold").setHorizontalAlignment("center");
-  sheet.getRange("D" + totalRow).setNumberFormat("$#,##0.00").setHorizontalAlignment("center");
-
-  var endingBalanceRow = totalRow + 1;
-  sheet.getRange("C" + endingBalanceRow).setValue("Ending Balance").setFontWeight("bold").setHorizontalAlignment("center");
-  sheet.getRange("D" + endingBalanceRow).setNumberFormat("$#,##0.00").setHorizontalAlignment("center");
-
-  var currentBalanceRow = endingBalanceRow + 1;
-  sheet.getRange("C" + currentBalanceRow).setValue("Projected Balance").setFontWeight("bold").setHorizontalAlignment("center");
-  sheet.getRange("D" + currentBalanceRow).setNumberFormat("$#,##0.00").setHorizontalAlignment("center");
-
-  deleteEmptyRows();
-  deleteEmptyColumns();
-
-  // make sure the amount column is set to be currency
-  sheet.getRange(2,2, sheet.getLastRow() - 3, 1).setNumberFormat("$#,##0.00");
-
-  updateBalances('interestCheckingID'); // TODO::Expand for other accounts
-
-  organizeSheetsAlphabetically();
-}
-///////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////
-function testStore()
-{
-  var numBanks = 5;
-  storeVariables(numBanks);
-}
-
-function testRetrieve()
-{
-  var key = 1;
-  var bankValues = retrieveVariablesByKey(key);
-  Logger.log(bankValues);
-}
-
-function storeVariables(numBanks) {
-  var output = [];
-
-  for (var i = 1; i <= numBanks; i++) {
-    var dateColumn = (i - 1) * 5 + 1;
-    var amountColumn = (i - 1) * 5 + 2;
-    var expenseDescriptionColumn = (i - 1) * 5 + 3;
-    var statusColumn = (i - 1) * 5 + 4;
-
-    var bankVariables = [dateColumn, amountColumn, expenseDescriptionColumn, statusColumn];
-    output.push([i, bankVariables]);
-  }
-
-  var properties = PropertiesService.getUserProperties();
-  properties.setProperty('bankColumnVariables', JSON.stringify(output));
-}
-
-function retrieveVariablesByKey(key) {
-  var properties = PropertiesService.getUserProperties();
-  var bankVariables = JSON.parse(properties.getProperty('bankColumnVariables'));
-
-  for (var i = 0; i < bankVariables.length; i++) {
-    if (bankVariables[i][0] === key) {
-      return bankVariables[i][1];
-    }
-  }
-
-  return null; // Key not found
 }

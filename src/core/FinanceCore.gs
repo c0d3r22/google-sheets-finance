@@ -1,8 +1,13 @@
+// ============================================================
+// Finance Tracker - Core Module
+// Main application logic for Google Sheets finance management
+// ============================================================
+
 // TODO::getAndSet, make another just for get/log
 function getPayPeriods(year, month) {
   var startDate = new Date('January 5, 2024');
   var properties = PropertiesService.getScriptProperties();
-  
+
   // Calculate the paydays for the year
   var paydays = [];
   var currentDate = new Date(startDate);
@@ -198,7 +203,6 @@ function createSheet(sheetName, numBanks, numExpenses) {
 
   // Store expenses as a document property
   // - initially blank to be filled in by user
-  // - carry over from already defined expenses
   var props = PropertiesService.getUserProperties();
   if (props.getProperty('expenses') === null) {
     Logger.log("Expenses property did not exist, creating it...");
@@ -260,7 +264,7 @@ function createNextMonthSheet(numBanks, numExpenses) {
   var sheetName = Utilities.formatDate(nextMonth, Session.getScriptTimeZone(), "MMMM yyyy");
 
   if (sheetExists(sheetName)) {
-    SpreadsheetApp.getUi().alert("Sheet '" + sheetName + "' already exists!  Please choose another name");
+    SpreadsheetApp.getUi().alert("Sheet '" + sheetName + "' already exists! Please choose another name");
   } else {
     createSheet(sheetName, numBanks, numExpenses);
   }
@@ -370,17 +374,17 @@ function processForm(form) {
 function editExpenses() {
   var props = PropertiesService.getDocumentProperties();
   if (props.getProperty('expenses') === null) {
-    Logger.log("Expenses property does not exist, creating...");
+    Logger.log("Expenses property did not exist, creating...");
     props.setProperty('expenses', JSON.stringify({}));
   }
 
   var expenses = JSON.parse(props.getProperty('expenses'));
   var expenseItems = Object.keys(expenses).sort();
-  
+
   var html = HtmlService.createTemplateFromFile('editExpenses');
   html.expenseItems = expenseItems;
   html.expenses = expenses;
-  
+
   SpreadsheetApp.getUi().showModalDialog(html.evaluate(), 'Edit Expenses');
 }
 
@@ -431,7 +435,7 @@ function onSelectionChange(e) {
   // If the expense descriptions have not been updated yet
   updateExpenseDescriptionRule(sheet);
 
-  // If the expense description amounts have not been updated yet
+  // If the expense amounts have not been updated yet
   refreshAmountColumn();
 }
 
@@ -455,20 +459,20 @@ function onNewRowAdded() {
   // Specify the sheet name and range to monitor
   var sheetName = "Test2";
   var range = "A1:D20";
-  
+
   // Get the spreadsheet object and sheet object
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = spreadsheet.getSheetByName(sheetName);
-  
+
   // Get the previous number of rows in the sheet
   var numRows = sheet.getLastRow();
-  
+
   // Set up a trigger to run when a new row is added to the sheet
   ScriptApp.newTrigger("myFunction")
     .forSpreadsheet(spreadsheet)
     .onEdit()
     .create();
-  
+
   // Wait for a new row to be added to the sheet
   while (sheet.getLastRow() == numRows) {
     Utilities.sleep(1000);
@@ -529,15 +533,15 @@ function myFunction() {
 //   var lastRow = sheet.getLastRow();
 //   var newRange = sheet.getRange(lastRow-4, 1, 1, 4);
 //   var today = new Date();
-  
+
 //   // Insert today's date in column 1 of the new row
 //   newRange.getCell(1, 1).setValue(today);
-  
+
 //   // Copy the data validations from columns 3 and 4 to columns 3 and 4 of the new row
 //   var sourceRange1 = sheet.getRange("C2:C2");
 //   var rule1 = sourceRange1.getDataValidations()[0][0];
 //   newRange.getCell(1, 3).setDataValidation(rule1);
-  
+
 //   var sourceRange2 = sheet.getRange("D2:D2");
 //   var rule2 = sourceRange2.getDataValidations()[0][0];
 //   newRange.getCell(1, 4).setDataValidation(rule2);
@@ -616,7 +620,7 @@ function sortSheetsByMonth() {
 
 function unhideAllSheets() {
   var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
-  
+
   sheets.forEach(function(sheet) {
     if (sheet.isSheetHidden()) {
       sheet.showSheet();
@@ -627,7 +631,7 @@ function unhideAllSheets() {
 function organizeSheetsAlphabetically() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = ss.getSheets();
-  
+
   sheets.sort(function(a, b) {
     var nameA = a.getName().toUpperCase();
     var nameB = b.getName().toUpperCase();
@@ -639,7 +643,7 @@ function organizeSheetsAlphabetically() {
     }
     return 0;
   });
-  
+
   for (var i = 0; i < sheets.length; i++) {
     ss.setActiveSheet(sheets[i]);
     ss.moveActiveSheet(i + 1);
@@ -687,11 +691,11 @@ function organizeSheetsByMonth() {
     if(a.hidden !== b.hidden) {
       return a.hidden ? 1 : -1;
     }
-    
+
     if(a.year !== b.year) {
       return a.year - b.year;
     }
-    
+
     return a.month - b.month;
   });
 

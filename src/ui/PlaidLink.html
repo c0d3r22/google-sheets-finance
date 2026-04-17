@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  </head>
+  <body>
+    <script>
+      // Initialize Link
+      var linkHandler = Plaid.create({
+        token: '<?= PropertiesService.getDocumentProperties().getProperty('plaidLinkToken') ?>',
+        onSuccess: function(public_token, metadata) {
+          // Send the public_token to your app server.
+          // The metadata object contains info about the institution the
+          // user selected and the account ID or IDs, if the
+          // Select Account view is enabled.
+          console.log('Public Token: ' + public_token);
+          console.log('Metadata: ' + JSON.stringify(metadata));
+          google.script.run.getAccessToken(public_token);
+        },
+        onExit: function(err, metadata) {
+          // The user exited the Link flow.
+          if (err != null) {
+            // The user encountered a Plaid API error prior to exiting.
+            console.log('Error: ' + JSON.stringify(err));
+          }
+          // metadata contains information about the institution
+          // that the user selected and the most recent API request IDs.
+          // Storing this information can be helpful for support.
+          console.log('Metadata: ' + JSON.stringify(metadata));
+        },
+        onEvent: function(eventName, metadata) {
+          // Optionally capture Link flow events, streamed through
+          // this callback as your users connect an Item to Plaid.
+          // For example:
+          // eventName = "TRANSITION_VIEW"
+          // metadata  = {
+          //   link_session_id: "123-abc-456-def",
+          //   mfa_type:        "questions",
+          //   timestamp:       "2017-09-14T14:42:19.350Z",
+          //   view_name:       "MFA",
+          // }
+          console.log('Event: ' + eventName);
+          console.log('Metadata: ' + JSON.stringify(metadata));
+        }
+      });
+
+      // Open Link
+      linkHandler.open();
+    </script>
+  </body>
+</html>

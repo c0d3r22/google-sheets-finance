@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <form id="myForm">
+      <label for="sheetName">Sheet Name:</label>
+      <input type="text" id="sheetName" name="sheetName" size="30"><br><br>
+      <label for="numBanks">Number of Banks:</label>
+      <input type="number" id="numBanks" name="numBanks" min="1" max="100" value="1"><br><br>
+      <label for="defaultExpenses">Default Number of Expenses:</label>
+      <input type="number" id="defaultExpenses" name="defaultExpenses" min="1" max="100" value="10"><br><br>
+      <input type="button" value="Create" onclick="google.script.run.withSuccessHandler(google.script.host.close).processForm(document.forms[0])">
+      <input type="button" value="Close" onclick="google.script.host.close()">
+    </form>
+  </body>
+</html>

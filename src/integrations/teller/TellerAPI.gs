@@ -1,4 +1,9 @@
 // ============================================================
+// Finance Tracker - Teller.io Integration Module
+// Alternative banking API for balance tracking using mTLS
+// ============================================================
+
+// ============================================================
 // Teller.io Daily Balance Tracker — Google Apps Script
 // ============================================================
 // Setup:
@@ -195,17 +200,4 @@ function setupDailyTrigger() {
     .create();
 
   Logger.log("Daily trigger created: dailyBalanceSync will run every day at 7 AM.");
-}
-
-// ------------------------------------------------------------
-// Optional: Remove all triggers (for cleanup/reset)
-// ------------------------------------------------------------
-
-function removeDailyTrigger() {
-  ScriptApp.getProjectTriggers().forEach((trigger) => {
-    if (trigger.getHandlerFunction() === "dailyBalanceSync") {
-      ScriptApp.deleteTrigger(trigger);
-      Logger.log("Trigger removed.");
-    }
-  });
 }
