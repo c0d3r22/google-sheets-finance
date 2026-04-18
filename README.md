@@ -68,6 +68,62 @@ The `original-code/` folder contains the working legacy codebase in its original
 
 The reorganized code in `src/` is recommended for new implementations as it provides better maintainability and modularity. The original code in `original-code/` is preserved for existing users who prefer to stick with the working legacy version.
 
+### Option 3: Use `clasp` (Recommended for development)
+1. Install `clasp` globally if needed:
+   ```bash
+   npm install -g @google/clasp
+   ```
+2. Log in to your Google account:
+   ```bash
+   clasp login
+   ```
+3. If you are connecting to an existing Apps Script project, clone it locally:
+   ```bash
+   clasp clone <SCRIPT_ID>
+   ```
+   If you are creating a new project from this repo, run:
+   ```bash
+   clasp create --type sheets --title "Google Sheets Finance Tracker" --rootDir src
+   ```
+   This repo is configured to keep Apps Script source files in `src/`, so `--rootDir src` ensures `clasp` uses the same layout.
+4. Sync files between local and remote:
+   - Pull remote files:
+     ```bash
+     clasp pull
+     ```
+   - Push local changes:
+     ```bash
+     clasp push
+     ```
+5. Open the script editor from the repo:
+   ```bash
+   clasp open
+   ```
+6. View execution logs:
+   ```bash
+   clasp logs
+   ```
+
+This repo already includes a `.clasp.json` configured for local development:
+```json
+{
+  "scriptId": "1anrJfEfCAZW0IvQzsoS6WgSHNZEgg3qFP4iRegDcpf0eWHik9j4qFMkF",
+  "rootDir": "./src",
+  "scriptExtensions": [".gs"],
+  "htmlExtensions": [".html"],
+  "jsonExtensions": [".json"],
+  "filePushOrder": [],
+  "skipSubdirectories": false
+}
+```
+
+Troubleshooting:
+- `clasp` uses `rootDir` to determine which local files are part of the Apps Script project, so only files under `src/` are pushed/pulled.
+- If you add or rename files under `src/`, run `clasp push` again to sync them.
+- If you clone a new project into this repo, ensure `.clasp.json` remains at the repo root and `rootDir` still points to `./src`.
+
+For this repo, keep the `src/` directory structure aligned with the Apps Script project and confirm `appsscript.json` is present at the repository root.
+
 ## Usage
 
 ### Basic Operations
