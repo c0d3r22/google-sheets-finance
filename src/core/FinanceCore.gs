@@ -305,11 +305,28 @@ function updateColumnWidths(sheet, newSheet = false)
   sheet.autoResizeColumns(1, 2);
 }
 
+function onEdit(e) {
+  onEditedItem(e);
+  // Also check for any empty rows that might need setup after any edit
+  setupEmptyRowsIfNeeded();
+}
+
+function onChange(e) {
+  if (e.changeType === 'INSERT_ROW') {
+    // Check if we need to set up any new rows after insertion
+    setupEmptyRowsIfNeeded();
+  }
+}
+
 // TODO::Somehow make this not trigger when rows are being deleted
 function onEditedItem(e) {
   var sheet = e.range.getSheet();
   var editedCol = e.range.getColumn();
   var editedRow = e.range.getRow();
+
+  if (rowNeedsSetup(editedRow)) {
+    setupRowAtPosition(editedRow);
+  }
 
   // If expense item, or status columns are edited
   if (editedCol == 1 || editedCol == 3 || editedCol == 4) {
@@ -344,6 +361,28 @@ function onOpen() {
     .addItem('Unhide All Sheets', 'unhideAllSheets')
     .addItem('Organize Sheets', 'sortSheetsByMonth')
     .addToUi();
+
+  // Ensure onChange trigger is installed
+  installOnChangeTrigger();
+}
+
+function installOnChangeTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var hasOnChange = false;
+  
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getEventType() === ScriptApp.EventType.ON_CHANGE) {
+      hasOnChange = true;
+      break;
+    }
+  }
+  
+  if (!hasOnChange) {
+    ScriptApp.newTrigger('onChange')
+      .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+      .onChange()
+      .create();
+  }
 }
 
 function showModal() {
@@ -541,30 +580,99 @@ function myFunction() {
   }
 }
 
-// function setupNewRow() {
-//   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-//   var lastRow = sheet.getLastRow();
-//   var newRange = sheet.getRange(lastRow-4, 1, 1, 4);
-//   var today = new Date();
+function rowNeedsSetup(rowNum) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var lastRow = sheet.getLastRow();
+  var bufferRow = lastRow - 3; // the intentional blank row before summary rows
 
-//   // Insert today's date in column 1 of the new row
-//   newRange.getCell(1, 1).setValue(today);
+  if (rowNum < 2 || rowNum > bufferRow) {
+    return false;
+  }
 
-//   // Copy the data validations from columns 3 and 4 to columns 3 and 4 of the new row
-//   var sourceRange1 = sheet.getRange("C2:C2");
-//   var rule1 = sourceRange1.getDataValidations()[0][0];
-//   newRange.getCell(1, 3).setDataValidation(rule1);
+  var rowRange = sheet.getRange(rowNum, 1, 1, 4);
+  var rowValues = rowRange.getValues()[0];
+  var dateCell = sheet.getRange(rowNum, 1);
+  var expenseCell = sheet.getRange(rowNum, 3);
+  var statusCell = sheet.getRange(rowNum, 4);
 
-//   var sourceRange2 = sheet.getRange("D2:D2");
-//   var rule2 = sourceRange2.getDataValidations()[0][0];
-//   newRange.getCell(1, 4).setDataValidation(rule2);
+  var expenseRule = expenseCell.getDataValidations()[0][0];
+  var statusRule = statusCell.getDataValidations()[0][0];
 
-//   // Insert "Pending" into column 4 of the new row
-//   newRange.getCell(1, 4).setValue("Pending");
+  var isRowEmpty = rowValues.every(function(cell) {
+    return cell === '' || cell === null || cell === undefined;
+  });
 
-//   // Center the contents of all cells in the new row
-//   newRange.setHorizontalAlignment("center");
-// }
+  // Keep the intentionally blank buffer row until the user starts typing into it.
+  if (rowNum === bufferRow && isRowEmpty) {
+    return false;
+  }
+
+  return isRowEmpty || dateCell.isBlank() || statusCell.isBlank() || !expenseRule || !statusRule;
+}
+
+function setupEmptyRowsIfNeeded() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var lastRow = sheet.getLastRow();
+  var bufferRow = lastRow - 3; // the intentional blank row before summary rows
+
+  for (var row = 2; row < bufferRow; row++) {
+    if (rowNeedsSetup(row)) {
+      setupRowAtPosition(row);
+    }
+  }
+
+  if (rowNeedsSetup(bufferRow)) {
+    setupRowAtPosition(bufferRow);
+  }
+}
+
+function setupRowAtPosition(rowNum) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var newRange = sheet.getRange(rowNum, 1, 1, 4);
+  var today = new Date();
+
+  // Insert today's date in column 1 of the new row if it's empty
+  var dateCell = newRange.getCell(1, 1);
+  if (dateCell.isBlank()) {
+    dateCell.setValue(today);
+  }
+
+  // Copy data validations from columns 3 and 4 to the new row if they exist and cell is empty
+  var sourceRange1 = sheet.getRange("C2:C2");
+  var rule1 = sourceRange1.getDataValidations()[0][0];
+  if (rule1 != null) {
+    var expenseValidationCell = newRange.getCell(1, 3);
+    if (expenseValidationCell.isBlank()) {
+      expenseValidationCell.setDataValidation(rule1);
+    }
+  }
+
+  var sourceRange2 = sheet.getRange("D2:D2");
+  var rule2 = sourceRange2.getDataValidations()[0][0];
+  if (rule2 != null) {
+    var statusValidationCell = newRange.getCell(1, 4);
+    if (statusValidationCell.isBlank()) {
+      statusValidationCell.setDataValidation(rule2);
+    }
+  }
+
+  // Insert "Pending" into column 4 of the new row if it's empty
+  var statusCell = newRange.getCell(1, 4);
+  if (statusCell.isBlank()) {
+    statusCell.setValue("Pending");
+  }
+
+  // Center the contents of all cells in the new row
+  newRange.setHorizontalAlignment("center");
+}
+
+function setupNewRow() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var lastRow = sheet.getLastRow();
+  // Empty row is always at lastRow - 3 (between expenses 2-N and summaries)
+  var targetRow = lastRow - 3;
+  setupRowAtPosition(targetRow);
+}
 
 function sortSheetsByMonth() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
