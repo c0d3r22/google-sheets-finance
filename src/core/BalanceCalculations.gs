@@ -9,21 +9,20 @@
 // Projected Balance: The current balance minus the projected items
 function updateBalances(accountID) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var dataRange = sheet.getDataRange();
+  var lastRow = sheet.getLastRow();
+  
+  // OPTIMIZATION: Only fetch the data range we need (avoid fetching empty cells)
+  var dataRange = sheet.getRange(2, 2, lastRow - 5, 3); // Columns B, C, D (Amount, Description, Status)
   var data = dataRange.getValues();
-  var lastRow = dataRange.getLastRow();
-  var amountColumn = 2; // Column B is the "Amount" column
-  var statusColumn = 4; // Column D is the "Status" column
-
+  
   var paidAmount = 0;
   var totalAmount = 0;
-  var endingBalance = 0;
   var projectedBalance = 0;
 
   // Calculate paid amount, total amount and projected balance
-  for (var i = 1; i < lastRow; i++) {
-    var amount = data[i][amountColumn - 1]; // Adjusting for zero-based indexing
-    var status = data[i][statusColumn - 1]; // Adjusting for zero-based indexing
+  for (var i = 0; i < data.length; i++) {
+    var amount = data[i][0]; // Column B - Amount (now at index 0)
+    var status = data[i][2];  // Column D - Status (now at index 2)
 
     if (typeof amount === 'number') {
       if (status === 'Paid') {
@@ -38,24 +37,23 @@ function updateBalances(accountID) {
   }
 
   // get bank balance from properties service for efficiency
-  var accountBalance = getBalanceFromProperties(accountID); //getAccountBalance(accountID);
-  // Logger.log('accountBalance: ' + accountBalance);
+  var accountBalance = getBalanceFromProperties(accountID);
 
   // We are adding because of negative cost vs positive income
-  endingBalance = parseFloat(accountBalance) + parseFloat(totalAmount);
-  // endingBalance = accountBalance + totalAmount;
-  // Logger.log('endingBalance: ' + endingBalance);
+  var endingBalance = parseFloat(accountBalance) + parseFloat(totalAmount);
   projectedBalance = parseFloat(accountBalance) + parseFloat(projectedBalance);
-  // projectedBalance = accountBalance + projectedBalance;
-  // Logger.log('projectedBalance: ' + projectedBalance);
 
-  // endingBalance = accountBalance - Math.abs(totalAmount);
-  // projectedBalance = accountBalance - Math.abs(projectedBalance);// - paidAmount;
-
-  // Update balances in the sheet
-  sheet.getRange(lastRow - 2, 4).setNumberFormat("$#,##0.00").setValue(accountBalance); // Total (Current Balance)
-  sheet.getRange(lastRow - 1, 4).setNumberFormat("$#,##0.00").setValue(endingBalance); // Ending Balance
-  sheet.getRange(lastRow, 4).setNumberFormat("$#,##0.00").setValue(projectedBalance); // Projected Balance
+  // OPTIMIZATION: Update all three balance cells in a single batch operation
+  var balanceRow = lastRow - 2;
+  var balanceUpdates = [
+    [accountBalance],
+    [endingBalance],
+    [projectedBalance]
+  ];
+  
+  sheet.getRange(balanceRow, 4, 3, 1)
+    .setNumberFormat("$#,##0.00")
+    .setValues(balanceUpdates);
 }
 
 function isNegativeNumber(number) {

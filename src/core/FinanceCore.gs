@@ -271,39 +271,34 @@ function createNextMonthSheet(numBanks, numExpenses) {
 }
 
 function sheetExists(sheetName) {
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  var sheets = spreadsheet.getSheets();
-
-  for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getName() === sheetName) {
-      return true;
-    }
-  }
-
-  return false;
+  // OPTIMIZATION: Use getSheetByName() instead of iterating through all sheets
+  // Returns null if not found, which is faster than manual loop
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName) !== null;
 }
 
 function updateColumnWidths(sheet, newSheet = false)
 {
   // Set dropdown data validation for status column
-  // var statusColumn = sheet.getRange("D2:D16");
   var statusColumn = newSheet === true ? sheet.getRange(2,4,sheet.getLastRow() - 1, 1) :
                                          sheet.getRange(2,4,sheet.getLastRow() - 5, 1);
   var statusRule = SpreadsheetApp.newDataValidation().requireValueInList(["Paid", "Pending", "Project-Transaction"]).build();
   statusColumn.setDataValidation(statusRule);
 
-  // Set width of status and expense description columns based on maximum length of options in validation rules
-  var maxLength = Math.max(
-    statusRule.getCriteriaValues()[0].reduce(function(max, option) {
-      return Math.max(max, option.length);
-    }, 0),
-    Object.keys(JSON.parse(PropertiesService.getDocumentProperties().getProperty('expenses'))).reduce(function(max, option) {
-      return Math.max(max, option.length);
-    }, 0),
-    sheet.getRange("C1").getValues()[0].reduce(function(max, header) {
-      return Math.max(max, header.length);
-    }, 0)
-  );
+  // OPTIMIZATION: Parse expenses JSON once and cache status options
+  var statusOptions = ["Paid", "Pending", "Project-Transaction"];
+  var expenses = JSON.parse(PropertiesService.getDocumentProperties().getProperty('expenses'));
+  var expenseOptions = Object.keys(expenses);
+
+  // Find maximum length among all options
+  var maxLength = 0;
+  statusOptions.forEach(function(option) {
+    maxLength = Math.max(maxLength, option.length);
+  });
+  expenseOptions.forEach(function(option) {
+    maxLength = Math.max(maxLength, option.length);
+  });
+  maxLength = Math.max(maxLength, "Expense Description".length);
+
   sheet.setColumnWidth(3, maxLength * 8);
   sheet.setColumnWidth(4, maxLength * 8);
 
@@ -352,7 +347,7 @@ function onOpen() {
 }
 
 function showModal() {
-  var html = HtmlService.createHtmlOutputFromFile('modal')
+  var html = HtmlService.createHtmlOutputFromFile('ui/CreateSheetModal')
       .setWidth(400)
       .setHeight(200);
   SpreadsheetApp.getUi().showModalDialog(html, 'Create New Sheet');
@@ -381,7 +376,7 @@ function editExpenses() {
   var expenses = JSON.parse(props.getProperty('expenses'));
   var expenseItems = Object.keys(expenses).sort();
 
-  var html = HtmlService.createTemplateFromFile('editExpenses');
+  var html = HtmlService.createTemplateFromFile('ui/EditExpenses');
   html.expenseItems = expenseItems;
   html.expenses = expenses;
 
@@ -406,15 +401,23 @@ function updateExpenses(expenseValues) {
 
 function refreshAmountColumn() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  // OPTIMIZATION: Parse expenses JSON once
   var expenses = JSON.parse(PropertiesService.getDocumentProperties().getProperty('expenses'));
-  // var range = sheet.getRange("B2:B16");
-  var range = sheet.getRange(2,2,sheet.getLastRow()-5, 1);
-  var values = range.getValues();
-  for (var i = 0; i < values.length; i++) {
-    var expenseItem = sheet.getRange(i + 2, 3).getValue();
-    values[i][0] = expenses[expenseItem];
+  var range = sheet.getRange(2, 2, sheet.getLastRow() - 5, 1);
+  var descriptionRange = sheet.getRange(2, 3, sheet.getLastRow() - 5, 1);
+  
+  // OPTIMIZATION: Get all descriptions in one batch call
+  var descriptions = descriptionRange.getValues();
+  
+  // Build array of amounts to set all at once
+  var amounts = [];
+  for (var i = 0; i < descriptions.length; i++) {
+    var expenseItem = descriptions[i][0];
+    amounts.push([expenses[expenseItem] || '']);
   }
-  range.setValues(values);
+  
+  // Set all amounts in one batch operation
+  range.setValues(amounts);
 }
 
 function deleteExpense(expenseItem) {
@@ -441,17 +444,27 @@ function onSelectionChange(e) {
 
 function updateExpenseDescriptionRule(sheet, newSheet = false) {
   try {
-    // Set dropdown data validation for expense description column
-    // var expenseDescriptionColumn = sheet.getRange("C2:C16");
+    // OPTIMIZATION: Get expenses once and cache
+    var expensesStr = PropertiesService.getDocumentProperties().getProperty('expenses');
+    if (!expensesStr) {
+      Logger.log("Expenses property not set");
+      return;
+    }
+    
+    var expenses = JSON.parse(expensesStr);
+    var expenseDescriptionOptions = Object.keys(expenses).sort();
+    
+    if (expenseDescriptionOptions.length === 0) {
+      Logger.log("No expense options available");
+      return;
+    }
+    
     var expenseDescriptionColumn = newSheet === true ? sheet.getRange(2,3,sheet.getLastRow()-1,1) :
                                                        sheet.getRange(2,3,sheet.getLastRow()-5,1);
-    var expenses = JSON.parse(PropertiesService.getDocumentProperties().getProperty('expenses'));
-    var expenseDescriptionOptions = Object.keys(expenses).sort();
     var expenseDescriptionRule = SpreadsheetApp.newDataValidation().requireValueInList(expenseDescriptionOptions).build();
     expenseDescriptionColumn.setDataValidation(expenseDescriptionRule);
   } catch (e) {
-    Logger.log("Expenses properties not set, if this is not a new page there is a problem...");
-    Logger.log(e);
+    Logger.log("Error updating expense description rule: " + e.message);
   }
 }
 

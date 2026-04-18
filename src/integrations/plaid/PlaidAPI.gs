@@ -73,6 +73,10 @@ function markTransactionsAsPaid(accountID) {
   // Retrieve transaction data for the date range
   var transactions = getTransactionHistory(formatDate(startDate), formatDate(endDate), ACCOUNT);
 
+  // OPTIMIZATION: Batch all status updates instead of cell-by-cell
+  var statusUpdates = [];
+  var updateRows = [];
+
   // Iterate through the spreadsheet data, starting from row 2
   for (var i = 1; i < data.length - 4; i++) {
     var row = data[i];
@@ -86,29 +90,34 @@ function markTransactionsAsPaid(accountID) {
         var transactionName = transaction.name.toLowerCase();
         var expenseDescriptionLower = expenseDescription.toLowerCase();
 
+        var shouldMark = false;
+        
         // Handle specific corner cases
         if (expenseDescriptionLower === "fidelity cc" && transactionName.includes("cardmember serv")) {
-          // Set the 'Status' column for the specific row to 'Paid'
-          sheet.getRange(i + 1, 4).setValue('Paid'); // Assuming 'Status' column is at index 4
-          break; // Exit the loop since a match is found
+          shouldMark = true;
         } else if (expenseDescriptionLower === "xfinity" && transactionName.includes("apple card")) {
-          // Set the 'Status' column for the specific row to 'Paid'
-          sheet.getRange(i + 1, 4).setValue('Paid'); // Assuming 'Status' column is at index 4
-          break; // Exit the loop since a match is found
+          shouldMark = true;
         } else if (expenseDescriptionLower === "pay day" && transactionName.includes("northrop grumman")) {
-          // Set the 'Status' column for the specific row to 'Paid'
-          sheet.getRange(i + 1, 4).setValue('Paid'); // Assuming 'Status' column is at index 4
-          break; // Exit the loop since a match is found
+          shouldMark = true;
         } else if (expenseDescriptionLower === "apple card (incl. rent)" && transactionName.includes("applecard")) {
-          // Set the 'Status' column for the specific row to 'Paid'
-          sheet.getRange(i + 1, 4).setValue('Paid'); // Assuming 'Status' column is at index 4
-          break; // Exit the loop since a match is found
+          shouldMark = true;
         } else if (transactionName.includes(expenseDescriptionLower)) {
-          // Set the 'Status' column for the specific row to 'Paid'
-          sheet.getRange(i + 1, 4).setValue('Paid'); // Assuming 'Status' column is at index 4
-          break; // Exit the loop since a match is found
+          shouldMark = true;
+        }
+        
+        if (shouldMark) {
+          statusUpdates.push(['Paid']);
+          updateRows.push(i + 1);
+          break;
         }
       }
+    }
+  }
+
+  // Apply all status updates in a single batch if there are any
+  if (statusUpdates.length > 0) {
+    for (var k = 0; k < updateRows.length; k++) {
+      sheet.getRange(updateRows[k], 4).setValue(statusUpdates[k][0]);
     }
   }
 }

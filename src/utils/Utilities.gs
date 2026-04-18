@@ -85,20 +85,22 @@ function createSheetWithData(sheetName, numBanks, numExpenses, expenseData) {
   var headers = ["Date", "Amount", "Expense Description", "Status"];
   sheet.getRange("A1:D1").setValues([headers]).setFontWeight("bold").setHorizontalAlignment("center");
 
+  // OPTIMIZATION: Batch all data updates into single setValues() call
   const numRows = numExpenses;
   const numCols = headers.length;
-  const dataRange = sheet.getRange(2, 1, numRows, numCols);
-  const dateColumnIndex = 0;
-  const descriptionColumnIndex = 2;
+  const batchData = [];
+  
   for (var i = 0; i < expenseData.length; i++) {
     var row = expenseData[i];
-    dataRange
-    .getCell(i + 1, dateColumnIndex + 1)
-    .setValue(row[0])
-    .setNumberFormat("M/d/yyyy");
-    dataRange
-    .getCell(i + 1, descriptionColumnIndex + 1)
-    .setValue(row[1]);
+    batchData.push([row[0], '', row[1], '']); // Date, Amount, Description, Status
+  }
+  
+  // Set all data at once (10-100x faster than cell-by-cell)
+  if (batchData.length > 0) {
+    const dataRange = sheet.getRange(2, 1, batchData.length, numCols);
+    dataRange.setValues(batchData);
+    // Format date column in batch
+    sheet.getRange(2, 1, batchData.length, 1).setNumberFormat("M/d/yyyy");
   }
 
   // Set default statuses to "Pending"
@@ -109,7 +111,6 @@ function createSheetWithData(sheetName, numBanks, numExpenses, expenseData) {
   // Store expenses as a document property
   // - initially blank to be filled in by user
   // - carry over from already defined expenses
-  var props = PropertiesService.getUserProperties();
   if (props.getProperty('expenses') === null) {
     Logger.log("Expenses property did not exist, creating it...");
     props.setProperty('expenses', JSON.stringify({}));

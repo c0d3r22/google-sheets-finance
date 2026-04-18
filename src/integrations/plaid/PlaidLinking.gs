@@ -67,7 +67,7 @@ function getLinkToken() {
 }
 
 function linkSetup() {
-  var htmlOutput = HtmlService.createHtmlOutputFromFile('PlaidLink').setWidth(400).setHeight(800);
+  var htmlOutput = HtmlService.createHtmlOutputFromFile('ui/PlaidLink').setWidth(400).setHeight(800);
   SpreadsheetApp.getUi().alert(PropertiesService.getDocumentProperties().getProperty('plaidLinkToken'));
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, ' ');
 }
