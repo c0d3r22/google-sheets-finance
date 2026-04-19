@@ -192,8 +192,15 @@ function createSheet(sheetName, numBanks, numExpenses) {
   const datesRange = sheet.getRange(2, 1, numExpenses, 1);
   const numRows = datesRange.getNumRows();
   const numCols = datesRange.getNumColumns();
-  const date = new Date();
-  const dateValues = Array(numRows).fill().map(() => Array(numCols).fill(date));
+
+  // Parse sheet name to get month and year, then create first day of that month
+  var dateParts = sheetName.split(' ');
+  var monthName = dateParts[0];
+  var year = parseInt(dateParts[1]);
+  var month = getMonthFromString(monthName);
+  var firstDayOfMonth = new Date(year, month, 1);
+
+  const dateValues = Array(numRows).fill().map(() => Array(numCols).fill(firstDayOfMonth));
   datesRange.setValues(dateValues);
 
   // Set default statuses to "Pending"
@@ -268,6 +275,116 @@ function createNextMonthSheet(numBanks, numExpenses) {
   } else {
     createSheet(sheetName, numBanks, numExpenses);
   }
+}
+
+function createCombinedMonthSheet(accountID) {
+  accountID = accountID || 'interestCheckingID';
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  var monthSheets = sheets.filter(function(sheet) {
+    return !sheet.isSheetHidden() && isMonthYearSheetName(sheet.getName());
+  });
+
+  if (monthSheets.length === 0) {
+    SpreadsheetApp.getUi().alert('No active month/year sheets found to combine.');
+    return;
+  }
+
+  var combinedSheetName = 'Combined Months';
+  var existing = ss.getSheetByName(combinedSheetName);
+  if (existing) {
+    ss.deleteSheet(existing);
+  }
+
+  // Get a fresh list of sheets after deletion
+  sheets = ss.getSheets();
+  var visibleSheets = sheets.filter(function(sheet) {
+    return !sheet.isSheetHidden();
+  });
+  if (visibleSheets.length > 0) {
+    ss.setActiveSheet(visibleSheets[visibleSheets.length - 1]);
+  }
+
+  monthSheets.sort(function(a, b) {
+    return getMonthYearValue(a.getName()) - getMonthYearValue(b.getName());
+  });
+
+  var combinedSheet = ss.insertSheet(combinedSheetName);
+  var headerValues = monthSheets[0].getRange('A1:D1').getValues();
+  combinedSheet.getRange(1, 1, 1, 4).setValues(headerValues).setFontWeight('bold').setHorizontalAlignment('center');
+
+  var combinedValues = [];
+  var validationRule3 = null;
+  var validationRule4 = null;
+
+  monthSheets.forEach(function(sheet) {
+    var sourceLastRow = sheet.getLastRow();
+    var expenseRowCount = Math.max(0, sourceLastRow - 5);
+    if (expenseRowCount > 0) {
+      var values = sheet.getRange(2, 1, expenseRowCount, 4).getValues();
+      combinedValues = combinedValues.concat(values);
+
+      if (!validationRule3) {
+        validationRule3 = sheet.getRange('C2:C2').getDataValidations()[0][0];
+      }
+      if (!validationRule4) {
+        validationRule4 = sheet.getRange('D2:D2').getDataValidations()[0][0];
+      }
+    }
+  });
+
+  if (combinedValues.length > 0) {
+    combinedSheet.getRange(2, 1, combinedValues.length, 4).setValues(combinedValues);
+    combinedSheet.getRange(2, 2, combinedValues.length, 1).setNumberFormat('$#,##0.00');
+
+    if (validationRule3) {
+      combinedSheet.getRange(2, 3, combinedValues.length, 1).setDataValidation(validationRule3);
+    }
+    if (validationRule4) {
+      combinedSheet.getRange(2, 4, combinedValues.length, 1).setDataValidation(validationRule4);
+    }
+  }
+
+  var bufferRow = combinedValues.length + 2;
+  combinedSheet.getRange(bufferRow, 1, 1, 4).clearContent();
+
+  var totalRow = bufferRow + 1;
+  var endingBalanceRow = bufferRow + 2;
+  var projectedBalanceRow = bufferRow + 3;
+
+  combinedSheet.getRange(totalRow, 3).setValue('Total').setFontWeight('bold').setHorizontalAlignment('center');
+  combinedSheet.getRange(totalRow, 4).setNumberFormat('$#,##0.00').setHorizontalAlignment('center');
+
+  combinedSheet.getRange(endingBalanceRow, 3).setValue('Ending Balance').setFontWeight('bold').setHorizontalAlignment('center');
+  combinedSheet.getRange(endingBalanceRow, 4).setNumberFormat('$#,##0.00').setHorizontalAlignment('center');
+
+  combinedSheet.getRange(projectedBalanceRow, 3).setValue('Projected Balance').setFontWeight('bold').setHorizontalAlignment('center');
+  combinedSheet.getRange(projectedBalanceRow, 4).setNumberFormat('$#,##0.00').setHorizontalAlignment('center');
+
+  var usedRows = projectedBalanceRow;
+  combinedSheet.getRange(1, 1, usedRows, 4).setHorizontalAlignment('center');
+
+  combinedSheet.autoResizeColumns(1, 2);
+  combinedSheet.setColumnWidth(3, 150);
+  combinedSheet.setColumnWidth(4, 150);
+
+  ss.setActiveSheet(combinedSheet);
+  updateBalances(accountID);
+  deleteEmptyRows();
+  deleteEmptyColumns();
+  ss.moveActiveSheet(ss.getSheets().length);
+}
+
+function isMonthYearSheetName(sheetName) {
+  return /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}$/.test(sheetName);
+}
+
+function getMonthYearValue(sheetName) {
+  var parts = sheetName.split(' ');
+  var month = getMonthFromString(parts[0]);
+  var year = parseInt(parts[1], 10);
+  return year * 100 + month;
 }
 
 function sheetExists(sheetName) {
@@ -356,6 +473,7 @@ function onOpen() {
     .addItem('Create New Sheet', 'showModal')
     .addItem('Create This Months Sheet', 'createThisMonthSheet')
     .addItem('Create Next Months Sheet', 'createNextMonthSheet')
+    .addItem('Combine Monthly Sheets', 'createCombinedMonthSheet')
     .addItem('Plaid - Link Bank Account', 'linkSetup')
     .addItem('Update transactions', 'dailyUpdateTrigger')
     .addItem('Unhide All Sheets', 'unhideAllSheets')
@@ -689,6 +807,17 @@ function sortSheetsByMonth() {
     return sheet.getName();
   });
 
+  // Separate the Combined Months sheet from regular month sheets
+  var combinedSheetName = 'Combined Months';
+  var combinedSheetIndex = sheetNames.indexOf(combinedSheetName);
+  var combinedSheet = null;
+  if (combinedSheetIndex !== -1) {
+    combinedSheet = sheets[combinedSheetIndex];
+    // Remove from arrays for separate handling
+    sheets.splice(combinedSheetIndex, 1);
+    sheetNames.splice(combinedSheetIndex, 1);
+  }
+
   // Function to parse sheet names and create a date object for comparison
   function parseSheetName(sheetName) {
     var parts = sheetName.split(' - ');
@@ -703,11 +832,6 @@ function sortSheetsByMonth() {
       archive: archive,
       originalName: sheetName
     };
-  }
-
-  // Helper function to convert month name to number
-  function getMonthFromString(mon) {
-    return new Date(Date.parse(mon + " 1, 2023")).getMonth();
   }
 
   // Function to compare sheets by date and archive status
@@ -737,6 +861,16 @@ function sortSheetsByMonth() {
       sheet.hideSheet();
     }
   });
+
+  // Move the Combined Months sheet to the end (after all sorted month sheets)
+  if (combinedSheet) {
+    ss.setActiveSheet(combinedSheet);
+    ss.moveActiveSheet(sheets.length + 1); // Move to the end
+  }
+}
+
+function getMonthFromString(mon) {
+  return new Date(Date.parse(mon + " 1, 2023")).getMonth();
 }
 
 function unhideAllSheets() {
