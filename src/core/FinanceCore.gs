@@ -798,14 +798,20 @@ function sortSheetsByMonth() {
 
   // Make all sheets visible before sorting
   sheets.forEach(function(sheet) {
-    if (sheet.isSheetHidden()) {
-      sheet.showSheet();
+    if (sheet.getName() != 'Balances') {
+      if (sheet.isSheetHidden()) {
+        sheet.showSheet();
+      }
     }
   });
 
-  var sheetNames = sheets.map(function(sheet) {
-    return sheet.getName();
+  var sheetNames = sheets.filter(function(sheet) {
+    return sheet.getName() !== 'Balances';}).map(function(sheet) {
+      return sheet.getName();
   });
+  //var sheetNames = sheets.map(function(sheet) {
+  //  return sheet.getName();
+  //});
 
   // Separate the Combined Months sheet from regular month sheets
   var combinedSheetName = 'Combined Months';
