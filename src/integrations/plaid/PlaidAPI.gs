@@ -29,6 +29,19 @@ function test()
 
 function dailyUpdateTrigger()
 {
+  // Setup the account identifiers
+  var account = 'interestCheckingID';
+  var accountID = 'InterestCheckingBalance';
+
+  // Get the balance from the 'Balances' sheet
+  var balanceSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Balances');
+  var accountBalance = balanceSheet.getRange(1, 2).getValue();
+
+  // Set the properties service value with the account balance
+  PropertiesService.getUserProperties().setProperty(accountID, accountBalance);
+
+  // Update the balances
+  updateBalances(account);
   /* Deprecated until Plaid doesn't cost freaking money...
   var account = 'interestCheckingID';
   // get the latest bank balances and update the properties service values
